@@ -5,9 +5,11 @@
 // License: MIT.
 
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Diagnostics;
 using System.IO;
+using System.Management;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -20,16 +22,16 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("Automatically switches the Windows 11 Xbox full screen experience based on your controller.")]
 [assembly: AssemblyCompany("EzerchE")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 EzerchE. MIT License.")]
-[assembly: AssemblyVersion("1.3.3.0")]
-[assembly: AssemblyFileVersion("1.3.3.0")]
-[assembly: AssemblyInformationalVersion("1.3.3-beta")]
+[assembly: AssemblyVersion("1.3.4.0")]
+[assembly: AssemblyFileVersion("1.3.4.0")]
+[assembly: AssemblyInformationalVersion("1.3.4-beta")]
 
 namespace AutoXboxMode
 {
     static class Program
     {
         public const string AppName = "AutoXboxMode";
-        public const string Version = "1.3.3-beta";
+        public const string Version = "1.3.4-beta";
         public const string RepoUrl = "https://github.com/EzerchE/AutoXboxMode";
 
         [STAThread]
@@ -155,6 +157,190 @@ namespace AutoXboxMode
                 if (GetState(i, out s) == 0) n++;
             }
             return n;
+        }
+
+        // --- XInput capabilities (for diagnostics) ---
+        struct XINPUT_GAMEPAD_C { public ushort wButtons; public byte bLT, bRT; public short sLX, sLY, sRX, sRY; }
+        struct XINPUT_VIBRATION_C { public ushort wLeft, wRight; }
+        struct XINPUT_CAPABILITIES
+        {
+            public byte Type;
+            public byte SubType;
+            public ushort Flags;
+            public XINPUT_GAMEPAD_C Gamepad;
+            public XINPUT_VIBRATION_C Vibration;
+        }
+        [DllImport("xinput1_4.dll", EntryPoint = "XInputGetCapabilities")]
+        static extern int XInputGetCaps14(int idx, int flags, out XINPUT_CAPABILITIES c);
+        [DllImport("xinput1_3.dll", EntryPoint = "XInputGetCapabilities")]
+        static extern int XInputGetCaps13(int idx, int flags, out XINPUT_CAPABILITIES c);
+
+        static int GetCaps(int idx, out XINPUT_CAPABILITIES c)
+        {
+            if (!useLegacy) { try { return XInputGetCaps14(idx, 0, out c); } catch { } }
+            try { return XInputGetCaps13(idx, 0, out c); } catch { c = new XINPUT_CAPABILITIES(); return 1167; }
+        }
+
+        static string SubTypeName(byte st)
+        {
+            switch (st)
+            {
+                case 0: return "unknown";
+                case 1: return "gamepad";
+                case 2: return "wheel";
+                case 3: return "arcade-stick";
+                case 4: return "flight-stick";
+                case 5: return "dance-pad";
+                case 6: return "guitar";
+                case 7: return "guitar-alt";
+                case 8: return "drum-kit";
+                case 11: return "guitar-bass";
+                case 19: return "arcade-pad";
+                default: return "subtype-" + st;
+            }
+        }
+
+        // Per-slot XInput report for the diagnostics log.
+        public static string DescribeControllers()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("  XInput dll: " + (useLegacy ? "xinput1_3" : "xinput1_4"));
+            for (int i = 0; i < 4; i++)
+            {
+                XINPUT_STATE s;
+                int rc = GetState(i, out s);
+                if (rc == 0)
+                {
+                    XINPUT_CAPABILITIES c;
+                    string caps = (GetCaps(i, out c) == 0)
+                        ? string.Format("subtype={0} {1}", SubTypeName(c.SubType),
+                            ((c.Flags & 0x0004) != 0) ? "wireless" : "wired")
+                        : "caps=n/a";
+                    sb.AppendLine(string.Format("  slot {0}: CONNECTED  {1}  packet={2}", i, caps, s.dwPacketNumber));
+                }
+                else
+                {
+                    sb.AppendLine(string.Format("  slot {0}: empty (rc={1})", i, rc));
+                }
+            }
+            return sb.ToString();
+        }
+
+        // Lists every visible window whose title contains "Xbox" with its rect,
+        // monitor bounds, and whether it counts as full screen (Xbox mode on).
+        public static string DescribeXboxMode()
+        {
+            List<string> lines = new List<string>();
+            EnumWindows(delegate(IntPtr h, IntPtr l)
+            {
+                if (!IsWindowVisible(h)) return true;
+                StringBuilder sb = new StringBuilder(512);
+                GetWindowText(h, sb, 512);
+                string t = sb.ToString();
+                if (string.IsNullOrEmpty(t) || t.IndexOf("Xbox", StringComparison.OrdinalIgnoreCase) < 0)
+                    return true;
+
+                RECT r;
+                if (!GetWindowRect(h, out r)) return true;
+                IntPtr mon = MonitorFromWindow(h, 2);
+                MONITORINFO mi = new MONITORINFO();
+                mi.cbSize = Marshal.SizeOf(mi);
+                bool gotMon = GetMonitorInfo(mon, ref mi);
+                RECT m = mi.rcMonitor;
+                const int tol = 2;
+                bool full = gotMon && r.Left <= m.Left + tol && r.Top <= m.Top + tol &&
+                            r.Right >= m.Right - tol && r.Bottom >= m.Bottom - tol;
+                lines.Add(string.Format("  '{0}' win[{1},{2},{3},{4}] mon[{5},{6},{7},{8}] -> {9}",
+                    t, r.Left, r.Top, r.Right, r.Bottom, m.Left, m.Top, m.Right, m.Bottom,
+                    full ? "FULL SCREEN (Xbox mode)" : "not full screen"));
+                return true;
+            }, IntPtr.Zero);
+            if (lines.Count == 0) return "  (no visible window with 'Xbox' in its title)" + Environment.NewLine;
+            return string.Join(Environment.NewLine, lines.ToArray()) + Environment.NewLine;
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    //  Diagnostics snapshot for the activity log (debug logging only).
+    //  Designed so users on any device/controller can send a log that is
+    //  enough to diagnose issues remotely.
+    // ---------------------------------------------------------------------
+    static class Diagnostics
+    {
+        public static string Snapshot(int baseline)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("==== DIAGNOSTICS ====");
+            sb.AppendLine("App: " + Program.AppName + " v" + Program.Version);
+            sb.AppendLine("OS: " + OsInfo());
+            sb.AppendLine("Process: " + (Environment.Is64BitProcess ? "x64" : "x86")
+                + " | OS 64-bit: " + Environment.Is64BitOperatingSystem
+                + " | .NET: " + Environment.Version);
+            sb.AppendLine("Monitors:");
+            try
+            {
+                foreach (Screen sc in Screen.AllScreens)
+                    sb.AppendLine(string.Format("  {0} bounds=[{1},{2},{3},{4}] primary={5}",
+                        sc.DeviceName, sc.Bounds.Left, sc.Bounds.Top, sc.Bounds.Right, sc.Bounds.Bottom, sc.Primary));
+            }
+            catch (Exception ex) { sb.AppendLine("  (error: " + ex.Message + ")"); }
+            sb.AppendLine("Baseline controller count: " + baseline);
+            sb.AppendLine("Controllers (XInput):");
+            sb.Append(Native.DescribeControllers());
+            sb.AppendLine("HID game devices (WMI):");
+            sb.Append(HidGameDevices());
+            sb.AppendLine("Xbox mode now: " + (Native.IsXboxModeOn() ? "ON" : "OFF"));
+            sb.AppendLine("Windows matching 'Xbox':");
+            sb.Append(Native.DescribeXboxMode());
+            sb.Append("=====================");
+            return sb.ToString();
+        }
+
+        static string OsInfo()
+        {
+            try
+            {
+                using (RegistryKey k = Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    if (k != null)
+                    {
+                        string product = k.GetValue("ProductName") as string;
+                        string display = k.GetValue("DisplayVersion") as string;
+                        string build = k.GetValue("CurrentBuild") as string;
+                        object ubr = k.GetValue("UBR");
+                        return string.Format("{0} {1} (build {2}.{3})", product, display, build, ubr);
+                    }
+                }
+            }
+            catch { }
+            return Environment.OSVersion.ToString();
+        }
+
+        static string HidGameDevices()
+        {
+            StringBuilder sb = new StringBuilder();
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, Status FROM Win32_PnPEntity WHERE PNPClass='HIDClass'"))
+                {
+                    foreach (ManagementBaseObject mo in s.Get())
+                    {
+                        string name = mo["Name"] as string;
+                        if (name == null) continue;
+                        string low = name.ToLowerInvariant();
+                        if (low.Contains("game") || low.Contains("controller") ||
+                            low.Contains("gamepad") || low.Contains("xbox") || low.Contains("xinput"))
+                        {
+                            sb.AppendLine("  " + name + " [" + (mo["Status"] as string) + "]");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { return "  (unavailable: " + ex.Message + ")" + Environment.NewLine; }
+            if (sb.Length == 0) sb.AppendLine("  (no HID game controllers matched)");
+            return sb.ToString();
         }
     }
 
@@ -415,8 +601,9 @@ namespace AutoXboxMode
             debounce.Tick += OnDebounceTick;
 
             baseline = prevCount = Native.ControllerCount();
-            Log.Write(string.Format("Started (event-driven). Controllers={0} (baseline), XboxMode={1}",
-                prevCount, Native.IsXboxModeOn() ? "ON" : "OFF"));
+            Log.Write(string.Format("Started (event-driven). Controllers={0} (baseline), XboxMode={1}, Debug={2}",
+                prevCount, Native.IsXboxModeOn() ? "ON" : "OFF", Log.Verbose));
+            if (Log.Verbose) Log.Write(Diagnostics.Snapshot(baseline));
             UpdateIcon();
 
             watcher = new DeviceWatcher();
@@ -427,6 +614,7 @@ namespace AutoXboxMode
         // evaluation happens shortly after the last message in a burst.
         void OnDeviceChanged()
         {
+            Log.Debug("Device change notification received.");
             if (!automationOn) return;
             debounce.Stop();
             debounce.Start();
@@ -439,7 +627,12 @@ namespace AutoXboxMode
 
             int count;
             try { count = Native.ControllerCount(); }
-            catch { return; }
+            catch (Exception ex) { Log.Debug("ControllerCount failed: " + ex.Message); return; }
+
+            if (Log.Verbose)
+                Log.Write(string.Format("Evaluate: count={0} prevCount={1} baseline={2} xboxMode={3}{4}{5}",
+                    count, prevCount, baseline, Native.IsXboxModeOn() ? "ON" : "OFF",
+                    Environment.NewLine, Native.DescribeControllers()));
 
             // Xbox mode is wanted whenever the live count is above the baseline of
             // always-present controllers. Acting on baseline crossings (rather than
@@ -489,8 +682,11 @@ namespace AutoXboxMode
 
         static void SetMode(bool want)
         {
+            Log.Debug(string.Format("SetMode(want={0}); current XboxMode={1}",
+                want, Native.IsXboxModeOn() ? "ON" : "OFF"));
             if (Native.IsXboxModeOn() == want) return;
 
+            Log.Debug("Sending Win+F11.");
             Native.SendWinF11();
 
             // Win+F11 is the official toggle. On a desktop it switches instantly,
@@ -506,6 +702,7 @@ namespace AutoXboxMode
             Log.Write(want
                 ? "Xbox mode did not turn on (prompt dismissed or still open)."
                 : "Xbox mode did not turn off.");
+            if (Log.Verbose) Log.Write("Xbox windows at this point:" + Environment.NewLine + Native.DescribeXboxMode());
         }
 
         static bool WaitFor(bool want, int timeoutMs)

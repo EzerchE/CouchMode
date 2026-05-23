@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4-beta] - 2026-05-23
+
+### Added
+- **Rich diagnostic logging** for remote troubleshooting. With Debug logging
+  enabled, the log now records a startup snapshot (app and OS version and build,
+  monitors and their bounds, per-slot XInput controller state with subtype and
+  wired/wireless, HID game-controller device names via WMI, Xbox mode state, and
+  every window matching "Xbox" with its rect and monitor bounds) plus per-event
+  detail on each controller change and during mode switching. This makes logs sent
+  by users on other devices and controllers enough to diagnose issues remotely.
+
 ## [1.3.3-beta] - 2026-05-23
 
 ### Fixed

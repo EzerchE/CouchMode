@@ -22,7 +22,8 @@ if (-not (Test-Path $csc)) { throw "csc.exe (.NET Framework 4.x) not found." }
 $refs = @(
     "System.dll",
     "System.Drawing.dll",
-    "System.Windows.Forms.dll"
+    "System.Windows.Forms.dll",
+    "System.Management.dll"
 ) | ForEach-Object { "/r:$_" }
 
 $iconArg = if (Test-Path $icon) { "/win32icon:$icon" } else { $null }
