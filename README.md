@@ -104,7 +104,6 @@ AutoXboxMode is free and open source. If it makes your gaming setup nicer, you c
 support development:
 
 - [GitHub Sponsors](https://github.com/sponsors/EzerchE)
-- [Buy Me a Coffee](https://www.buymeacoffee.com/EzerchE)
 
 ## License
 
