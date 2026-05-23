@@ -19,7 +19,7 @@ namespace AutoXboxMode
     static class Program
     {
         public const string AppName = "AutoXboxMode";
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         [STAThread]
         static void Main()
@@ -148,6 +148,82 @@ namespace AutoXboxMode
     }
 
     // ---------------------------------------------------------------------
+    //  Device watcher: a message-only window that receives device interface
+    //  arrival/removal notifications. Fully event-driven - no polling, so
+    //  idle CPU usage is zero.
+    // ---------------------------------------------------------------------
+    class DeviceWatcher : NativeWindow, IDisposable
+    {
+        public event Action DeviceChanged;
+
+        const int WM_DEVICECHANGE = 0x0219;
+        const int DBT_DEVICEARRIVAL = 0x8000;
+        const int DBT_DEVICEREMOVECOMPLETE = 0x8004;
+        const int DBT_DEVTYP_DEVICEINTERFACE = 5;
+        const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x0000;
+        const int DEVICE_NOTIFY_ALL_INTERFACE_CLASSES = 0x0004;
+        static readonly IntPtr HWND_MESSAGE = new IntPtr(-3);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        struct DEV_BROADCAST_DEVICEINTERFACE
+        {
+            public int dbcc_size;
+            public int dbcc_devicetype;
+            public int dbcc_reserved;
+            public Guid dbcc_classguid;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 255)]
+            public string dbcc_name;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        static extern IntPtr RegisterDeviceNotification(IntPtr h, IntPtr filter, int flags);
+        [DllImport("user32.dll")]
+        static extern bool UnregisterDeviceNotification(IntPtr h);
+
+        IntPtr notify = IntPtr.Zero;
+
+        public DeviceWatcher()
+        {
+            CreateParams cp = new CreateParams();
+            cp.Caption = "AutoXboxMode.DeviceWatcher";
+            cp.Parent = HWND_MESSAGE; // message-only window
+            CreateHandle(cp);
+
+            DEV_BROADCAST_DEVICEINTERFACE dbi = new DEV_BROADCAST_DEVICEINTERFACE();
+            dbi.dbcc_size = Marshal.SizeOf(typeof(DEV_BROADCAST_DEVICEINTERFACE));
+            dbi.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+            IntPtr buf = Marshal.AllocHGlobal(dbi.dbcc_size);
+            try
+            {
+                Marshal.StructureToPtr(dbi, buf, false);
+                notify = RegisterDeviceNotification(this.Handle, buf,
+                    DEVICE_NOTIFY_WINDOW_HANDLE | DEVICE_NOTIFY_ALL_INTERFACE_CLASSES);
+            }
+            finally { Marshal.FreeHGlobal(buf); }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_DEVICECHANGE)
+            {
+                int e = m.WParam.ToInt32();
+                if (e == DBT_DEVICEARRIVAL || e == DBT_DEVICEREMOVECOMPLETE)
+                {
+                    Action h = DeviceChanged;
+                    if (h != null) h();
+                }
+            }
+            base.WndProc(ref m);
+        }
+
+        public void Dispose()
+        {
+            if (notify != IntPtr.Zero) { UnregisterDeviceNotification(notify); notify = IntPtr.Zero; }
+            if (Handle != IntPtr.Zero) DestroyHandle();
+        }
+    }
+
+    // ---------------------------------------------------------------------
     //  Settings (simple key=value file in %AppData%\AutoXboxMode\config.ini)
     // ---------------------------------------------------------------------
     class Settings
@@ -155,7 +231,6 @@ namespace AutoXboxMode
         public bool EnableOnConnect = true;
         public bool DisableOnDisconnect = true;
         public bool StartWithWindows = false;
-        public int PollSeconds = 1;
 
         static string Dir
         {
@@ -186,7 +261,6 @@ namespace AutoXboxMode
                         if (k == "EnableOnConnect") s.EnableOnConnect = (v == "1");
                         else if (k == "DisableOnDisconnect") s.DisableOnDisconnect = (v == "1");
                         else if (k == "StartWithWindows") s.StartWithWindows = (v == "1");
-                        else if (k == "PollSeconds") { int p; if (int.TryParse(v, out p) && p >= 1 && p <= 10) s.PollSeconds = p; }
                     }
                 }
             }
@@ -203,7 +277,6 @@ namespace AutoXboxMode
                 sb.AppendLine("EnableOnConnect=" + (EnableOnConnect ? "1" : "0"));
                 sb.AppendLine("DisableOnDisconnect=" + (DisableOnDisconnect ? "1" : "0"));
                 sb.AppendLine("StartWithWindows=" + (StartWithWindows ? "1" : "0"));
-                sb.AppendLine("PollSeconds=" + PollSeconds);
                 File.WriteAllText(ConfigPath, sb.ToString());
             }
             catch { }
@@ -259,7 +332,8 @@ namespace AutoXboxMode
     class TrayContext : ApplicationContext
     {
         readonly NotifyIcon tray;
-        readonly System.Windows.Forms.Timer timer;
+        readonly DeviceWatcher watcher;
+        readonly System.Windows.Forms.Timer debounce;
         readonly Icon iconActive;
         readonly Icon iconIdle;
         readonly ToolStripMenuItem miActive;
@@ -298,19 +372,34 @@ namespace AutoXboxMode
             tray.ContextMenuStrip = menu;
             tray.DoubleClick += OnSettings;
 
+            // Coalesces bursts of device messages and gives XInput a moment to
+            // recognise a freshly powered controller. One-shot, so it only runs
+            // briefly after a device event - idle CPU stays at zero.
+            debounce = new System.Windows.Forms.Timer();
+            debounce.Interval = 1000;
+            debounce.Tick += OnDebounceTick;
+
             prevCount = Native.ControllerCount();
-            Log.Write(string.Format("Started. Controllers={0}, XboxMode={1}",
+            Log.Write(string.Format("Started (event-driven). Controllers={0}, XboxMode={1}",
                 prevCount, Native.IsXboxModeOn() ? "ON" : "OFF"));
             UpdateIcon();
 
-            timer = new System.Windows.Forms.Timer();
-            timer.Interval = settings.PollSeconds * 1000;
-            timer.Tick += OnTick;
-            timer.Start();
+            watcher = new DeviceWatcher();
+            watcher.DeviceChanged += OnDeviceChanged;
         }
 
-        void OnTick(object sender, EventArgs e)
+        // Fired on any device arrival/removal. Re-arm the debounce so the actual
+        // evaluation happens shortly after the last message in a burst.
+        void OnDeviceChanged()
         {
+            if (!automationOn) return;
+            debounce.Stop();
+            debounce.Start();
+        }
+
+        void OnDebounceTick(object sender, EventArgs e)
+        {
+            debounce.Stop();
             if (!automationOn || busy) return;
 
             int count;
@@ -408,7 +497,6 @@ namespace AutoXboxMode
                     settings = f.Result;
                     settings.Save();
                     Startup.Apply(settings.StartWithWindows);
-                    timer.Interval = settings.PollSeconds * 1000;
                     Log.Write("Settings saved.");
                 }
             }
@@ -427,7 +515,8 @@ namespace AutoXboxMode
 
         void OnExit(object sender, EventArgs e)
         {
-            timer.Stop();
+            debounce.Stop();
+            if (watcher != null) watcher.Dispose();
             tray.Visible = false;
             Log.Write("Exit.");
             ExitThread();
@@ -461,7 +550,6 @@ namespace AutoXboxMode
         readonly CheckBox cbConnect;
         readonly CheckBox cbDisconnect;
         readonly CheckBox cbStartup;
-        readonly NumericUpDown numPoll;
         public Settings Result;
 
         public SettingsForm(Settings current)
@@ -473,7 +561,7 @@ namespace AutoXboxMode
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(360, 200);
+            ClientSize = new Size(360, 168);
 
             cbConnect = new CheckBox();
             cbConnect.Text = "Enter Xbox mode when a controller connects";
@@ -490,32 +578,20 @@ namespace AutoXboxMode
             cbStartup.Checked = current.StartWithWindows;
             cbStartup.SetBounds(16, 72, 330, 22);
 
-            Label lbl = new Label();
-            lbl.Text = "Check interval (seconds):";
-            lbl.SetBounds(16, 104, 160, 22);
-
-            numPoll = new NumericUpDown();
-            numPoll.Minimum = 1;
-            numPoll.Maximum = 10;
-            numPoll.Value = current.PollSeconds;
-            numPoll.SetBounds(180, 102, 50, 22);
-
             Button ok = new Button();
             ok.Text = "Save";
             ok.DialogResult = DialogResult.OK;
-            ok.SetBounds(176, 152, 80, 28);
+            ok.SetBounds(176, 120, 80, 28);
             ok.Click += OnSave;
 
             Button cancel = new Button();
             cancel.Text = "Cancel";
             cancel.DialogResult = DialogResult.Cancel;
-            cancel.SetBounds(264, 152, 80, 28);
+            cancel.SetBounds(264, 120, 80, 28);
 
             Controls.Add(cbConnect);
             Controls.Add(cbDisconnect);
             Controls.Add(cbStartup);
-            Controls.Add(lbl);
-            Controls.Add(numPoll);
             Controls.Add(ok);
             Controls.Add(cancel);
             AcceptButton = ok;
@@ -528,7 +604,6 @@ namespace AutoXboxMode
             s.EnableOnConnect = cbConnect.Checked;
             s.DisableOnDisconnect = cbDisconnect.Checked;
             s.StartWithWindows = cbStartup.Checked;
-            s.PollSeconds = (int)numPoll.Value;
             Result = s;
         }
     }

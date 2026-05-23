@@ -19,10 +19,12 @@ No more reaching for the mouse — let the controller drive the experience.
   resolution and multi-monitor setup; no fragile mouse coordinates.
 - **Controller detection via XInput** — works with any Xbox / XInput-compatible
   controller (wired, wireless dongle, or Bluetooth), regardless of brand. No admin rights required.
-- **System tray app** — lightweight, runs quietly in the background.
-- **Configurable** — toggle each behavior, set the poll interval, and start with Windows.
-- **Tiny & dependency-free** — single executable built on .NET Framework 4.8, which
-  ships with Windows 11. Nothing else to install.
+- **Event-driven — zero idle CPU** — listens for Windows device notifications instead
+  of polling, so it does nothing until a controller connects or disconnects.
+- **System tray app** — lightweight, runs quietly in the background (~30 MB RAM).
+- **Configurable** — toggle each behavior and start with Windows.
+- **Tiny & dependency-free** — single ~17 KB executable built on .NET Framework 4.8,
+  which ships with Windows 11. Nothing else to install.
 
 ## Requirements
 
@@ -62,14 +64,15 @@ Right-click the tray icon for options:
 | Enter Xbox mode when a controller connects | On | Switch to Xbox mode on controller power-on. |
 | Exit Xbox mode when all controllers disconnect | On | Return to desktop when the last controller powers off. |
 | Start automatically with Windows | Off | Launch AutoXboxMode at sign-in. |
-| Check interval (seconds) | 1 | How often controller state is polled (1–10). |
 
 Settings and logs are stored in `%AppData%\AutoXboxMode\`.
 
 ## How it works
 
-- **Controller state** is polled with XInput (`XInputGetState`), counting connected
-  XInput slots.
+- **Controller events** are delivered by Windows: a message-only window registers for
+  device-interface notifications (`RegisterDeviceNotification` + `WM_DEVICECHANGE`), so
+  there is no background polling. Connected controllers are then counted with XInput
+  (`XInputGetState`).
 - **Mode switching** sends the official **`Win+F11`** shortcut that Windows 11 uses to
   toggle the full screen experience.
 - **Current mode** is detected by enumerating top-level windows: if a visible window
@@ -92,6 +95,14 @@ Windows 11 machine.
 - Choose apps/shortcuts to **close** when a controller connects (e.g. quit work apps).
 - Define custom **actions** to run when a controller disconnects.
 - Per-controller and per-profile rules.
+
+## Support
+
+AutoXboxMode is free and open source. If it makes your gaming setup nicer, you can
+support development:
+
+- [GitHub Sponsors](https://github.com/sponsors/EzerchE)
+- [Buy Me a Coffee](https://www.buymeacoffee.com/EzerchE)
 
 ## License
 
