@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write   # create the release and upload assets
+  actions: read     # let SignPath download the build artifact
   id-token: write   # used by SignPath to verify the build origin
 
 jobs:
@@ -47,6 +48,7 @@ jobs:
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          github-token: ${{ github.token }}
           organization-id: '9c8a76bc-dfe3-4862-9bd1-cd754db2c498'
           project-slug: 'AutoXboxMode'
           # Test-signing policy (self-signed, not trusted by Windows). Switch to
