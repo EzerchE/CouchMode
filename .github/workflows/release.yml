@@ -1,5 +1,12 @@
 name: Release (build, sign, publish)
 
+# STATUS: currently DISABLED in GitHub Actions, pending SignPath Foundation
+# approval. CI signing needs the "trusted build system" feature, which the
+# self-service free trial does not include. Once the Foundation application is
+# approved, update organization-id / signing-policy-slug below, enable trusted
+# build system + origin verification, and re-enable the workflow
+# (gh workflow enable release.yml). Until then, releases are cut manually.
+#
 # Builds AutoXboxMode.exe, sends it to SignPath for code signing (free for
 # open-source projects via SignPath Foundation), and attaches the SIGNED exe
 # to a GitHub Release.
