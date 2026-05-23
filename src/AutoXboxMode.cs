@@ -22,16 +22,16 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("Automatically switches the Windows 11 Xbox full screen experience based on your controller.")]
 [assembly: AssemblyCompany("EzerchE")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 EzerchE. MIT License.")]
-[assembly: AssemblyVersion("1.3.4.0")]
-[assembly: AssemblyFileVersion("1.3.4.0")]
-[assembly: AssemblyInformationalVersion("1.3.4-beta")]
+[assembly: AssemblyVersion("1.3.5.0")]
+[assembly: AssemblyFileVersion("1.3.5.0")]
+[assembly: AssemblyInformationalVersion("1.3.5-beta")]
 
 namespace AutoXboxMode
 {
     static class Program
     {
         public const string AppName = "AutoXboxMode";
-        public const string Version = "1.3.4-beta";
+        public const string Version = "1.3.5-beta";
         public const string RepoUrl = "https://github.com/EzerchE/AutoXboxMode";
 
         [STAThread]
@@ -226,6 +226,18 @@ namespace AutoXboxMode
             return sb.ToString();
         }
 
+        // Privacy: window titles can contain personal content (browser tabs,
+        // document names, account names). The Xbox full screen shell window is
+        // titled exactly "Xbox", so we only ever log that; any other window that
+        // merely contains "Xbox" as a substring has its title redacted. We keep
+        // the rect/monitor/verdict, which is all we need to diagnose detection.
+        static string SafeTitle(string t)
+        {
+            if (t != null && string.Equals(t.Trim(), "Xbox", StringComparison.OrdinalIgnoreCase))
+                return "Xbox";
+            return "[redacted title]";
+        }
+
         // Lists every visible window whose title contains "Xbox" with its rect,
         // monitor bounds, and whether it counts as full screen (Xbox mode on).
         public static string DescribeXboxMode()
@@ -251,7 +263,7 @@ namespace AutoXboxMode
                 bool full = gotMon && r.Left <= m.Left + tol && r.Top <= m.Top + tol &&
                             r.Right >= m.Right - tol && r.Bottom >= m.Bottom - tol;
                 lines.Add(string.Format("  '{0}' win[{1},{2},{3},{4}] mon[{5},{6},{7},{8}] -> {9}",
-                    t, r.Left, r.Top, r.Right, r.Bottom, m.Left, m.Top, m.Right, m.Bottom,
+                    SafeTitle(t), r.Left, r.Top, r.Right, r.Bottom, m.Left, m.Top, m.Right, m.Bottom,
                     full ? "FULL SCREEN (Xbox mode)" : "not full screen"));
                 return true;
             }, IntPtr.Zero);
@@ -496,6 +508,12 @@ namespace AutoXboxMode
             if (Verbose) Write(msg);
         }
 
+        // Hard caps so the log can never grow without bound. When it exceeds
+        // MaxBytes we keep only the most recent KeepBytes (trim to tail) instead
+        // of wiping it, so the startup diagnostics and recent events survive.
+        const long MaxBytes = 512 * 1024;
+        const int KeepChars = 128 * 1024;
+
         public static void Write(string msg)
         {
             try
@@ -505,9 +523,14 @@ namespace AutoXboxMode
                     Directory.CreateDirectory(Path.GetDirectoryName(Settings.LogPath));
                     string line = string.Format("[{0:yyyy-MM-dd HH:mm:ss}] {1}{2}",
                         DateTime.Now, msg, Environment.NewLine);
-                    // keep the log small
-                    if (File.Exists(Settings.LogPath) && new FileInfo(Settings.LogPath).Length > 256 * 1024)
-                        File.WriteAllText(Settings.LogPath, "");
+
+                    if (File.Exists(Settings.LogPath) && new FileInfo(Settings.LogPath).Length > MaxBytes)
+                    {
+                        string all = File.ReadAllText(Settings.LogPath);
+                        string keep = all.Length > KeepChars ? all.Substring(all.Length - KeepChars) : all;
+                        File.WriteAllText(Settings.LogPath,
+                            "[log trimmed to last " + (KeepChars / 1024) + " KB]" + Environment.NewLine + keep);
+                    }
                     File.AppendAllText(Settings.LogPath, line);
                 }
             }

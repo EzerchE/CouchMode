@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5-beta] - 2026-05-23
+
+### Changed
+- **Privacy:** the diagnostic log no longer records arbitrary window titles. Only
+  the Xbox shell window (titled exactly "Xbox") is named; any other window that
+  merely contains "Xbox" has its title redacted, while its size and monitor are
+  still logged for detection diagnosis. No file paths, usernames, account data, or
+  device serial numbers are ever logged.
+- **Log size:** the activity log is now trimmed to its most recent 128 KB when it
+  passes 512 KB (instead of being wiped), so the startup diagnostics and recent
+  events survive. The expensive WMI device query runs only once at startup and only
+  when Debug logging is enabled, so it does not affect normal performance.
+
 ## [1.3.4-beta] - 2026-05-23
 
 ### Added
