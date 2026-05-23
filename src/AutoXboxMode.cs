@@ -22,6 +22,7 @@ using Microsoft.Win32;
 [assembly: AssemblyCopyright("Copyright (c) 2026 EzerchE. MIT License.")]
 [assembly: AssemblyVersion("1.3.3.0")]
 [assembly: AssemblyFileVersion("1.3.3.0")]
+[assembly: AssemblyInformationalVersion("1.3.3-beta")]
 
 namespace AutoXboxMode
 {
