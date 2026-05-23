@@ -19,7 +19,7 @@ namespace AutoXboxMode
     static class Program
     {
         public const string AppName = "AutoXboxMode";
-        public const string Version = "1.2.0";
+        public const string Version = "1.3.0";
         public const string RepoUrl = "https://github.com/EzerchE/AutoXboxMode";
 
         [STAThread]
@@ -564,6 +564,8 @@ namespace AutoXboxMode
             ExitThread();
         }
 
+        // Draws the same minimal gamepad as the exe icon (see generate-assets.ps1).
+        // Green when active, grey when paused; white details.
         static Icon MakeIcon(bool active)
         {
             using (Bitmap bmp = new Bitmap(32, 32))
@@ -571,16 +573,35 @@ namespace AutoXboxMode
             {
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.Clear(Color.Transparent);
-                Color c = active ? Color.FromArgb(16, 124, 16) : Color.FromArgb(110, 110, 110);
-                using (SolidBrush b = new SolidBrush(c))
-                    g.FillEllipse(b, 1, 1, 30, 30);
-                using (Pen p = new Pen(Color.White, 3.2f))
+
+                Color fill = active ? Color.FromArgb(16, 124, 16) : Color.FromArgb(110, 110, 110);
+                using (SolidBrush bFill = new SolidBrush(fill))
+                using (SolidBrush bDetail = new SolidBrush(Color.White))
                 {
-                    g.DrawLine(p, 11, 11, 21, 21);
-                    g.DrawLine(p, 21, 11, 11, 21);
+                    g.FillEllipse(bFill, 2f, 12f, 13f, 13f);   // left grip
+                    g.FillEllipse(bFill, 17f, 12f, 13f, 13f);  // right grip
+                    using (System.Drawing.Drawing2D.GraphicsPath body = RoundedRect(4f, 7f, 24f, 13f, 6f))
+                        g.FillPath(bFill, body);
+
+                    g.FillRectangle(bDetail, 8.6f, 12f, 1.8f, 7f);   // dpad vertical
+                    g.FillRectangle(bDetail, 6f, 14.6f, 7f, 1.8f);   // dpad horizontal
+                    g.FillEllipse(bDetail, 20f, 12f, 3f, 3f);        // button A
+                    g.FillEllipse(bDetail, 23.3f, 15.3f, 3f, 3f);    // button B
                 }
                 return Icon.FromHandle(bmp.GetHicon());
             }
+        }
+
+        static System.Drawing.Drawing2D.GraphicsPath RoundedRect(float x, float y, float w, float h, float r)
+        {
+            float d = r * 2;
+            System.Drawing.Drawing2D.GraphicsPath p = new System.Drawing.Drawing2D.GraphicsPath();
+            p.AddArc(x, y, d, d, 180, 90);
+            p.AddArc(x + w - d, y, d, d, 270, 90);
+            p.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+            p.AddArc(x, y + h - d, d, d, 90, 90);
+            p.CloseFigure();
+            return p;
         }
     }
 
