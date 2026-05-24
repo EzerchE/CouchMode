@@ -104,6 +104,26 @@ Settings and logs are stored in `%AppData%\AutoXboxMode\`.
   Because this is evaluated relative to each monitor's bounds, it is independent of
   resolution and works with multiple monitors.
 
+## Xbox mode comes in two levels
+
+It helps to know which version of Xbox mode your device has:
+
+- **Default (most PCs):** a controller-friendly full screen interface, similar to
+  Steam Big Picture. Switching is instant, there is no restart prompt, and
+  background processes are not trimmed.
+- **Full handheld-style:** the version that shows a "Restart for better
+  performance" prompt and actually limits background services for extra
+  performance. Windows enables this only on devices it recognizes as gaming
+  handhelds (such as the ROG Ally). Getting it on a standard PC means forcing it
+  (feature flags plus spoofing the device form factor and panel size), which is
+  unofficial and can be unstable on multi-monitor or docked setups.
+
+AutoXboxMode works with either level, because it only sends the official `Win+F11`
+toggle that Windows itself uses. If you have the full handheld-style mode, the
+restart prompt still appears and AutoXboxMode leaves that choice to you. Whether to
+force the full mode on a desktop is entirely your decision; this project does not
+perform or recommend any device spoofing.
+
 ## Building from source
 
 Requires the .NET Framework 4.x compiler (`csc.exe`), which is present on every
