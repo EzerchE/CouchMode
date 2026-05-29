@@ -820,17 +820,15 @@ namespace AutoXboxMode
                 using (SolidBrush bFill = new SolidBrush(fill))
                 using (SolidBrush bDetail = new SolidBrush(Color.White))
                 {
-                    using (System.Drawing.Drawing2D.GraphicsPath bumperL = RoundedRect(5f, 7f, 8f, 4f, 2f))
-                        g.FillPath(bFill, bumperL);
-                    using (System.Drawing.Drawing2D.GraphicsPath bumperR = RoundedRect(19f, 7f, 8f, 4f, 2f))
-                        g.FillPath(bFill, bumperR);
-                    using (System.Drawing.Drawing2D.GraphicsPath body = RoundedRect(2f, 10f, 28f, 14f, 7f))
+                    g.FillEllipse(bFill, 2f, 12f, 13f, 13f);   // left grip
+                    g.FillEllipse(bFill, 17f, 12f, 13f, 13f);  // right grip
+                    using (System.Drawing.Drawing2D.GraphicsPath body = RoundedRect(4f, 7f, 24f, 13f, 6f))
                         g.FillPath(bFill, body);
 
-                    g.FillRectangle(bDetail, 8.6f, 13f, 1.8f, 7f);    // dpad vertical
-                    g.FillRectangle(bDetail, 6f, 15.6f, 7f, 1.8f);    // dpad horizontal
-                    g.FillEllipse(bDetail, 20f, 13f, 3f, 3f);         // button A
-                    g.FillEllipse(bDetail, 23.3f, 16.3f, 3f, 3f);     // button B
+                    g.FillRectangle(bDetail, 8.6f, 12f, 1.8f, 7f);   // dpad vertical
+                    g.FillRectangle(bDetail, 6f, 14.6f, 7f, 1.8f);   // dpad horizontal
+                    g.FillEllipse(bDetail, 20f, 12f, 3f, 3f);        // button A
+                    g.FillEllipse(bDetail, 23.3f, 15.3f, 3f, 3f);    // button B
                 }
                 return Icon.FromHandle(bmp.GetHicon());
             }

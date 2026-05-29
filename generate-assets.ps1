@@ -37,22 +37,19 @@ function New-GamepadBitmap([int]$S, [System.Drawing.Color]$fill) {
     $bFill   = New-Object System.Drawing.SolidBrush($fill)
     $bDetail = New-Object System.Drawing.SolidBrush($White)
 
-    # Silhouette: face-on controller, single wide body with small shoulder bumpers.
-    $bumperL = New-RoundRect (5*$k)  (7*$k) (8*$k) (4*$k) (2*$k)
-    $bumperR = New-RoundRect (19*$k) (7*$k) (8*$k) (4*$k) (2*$k)
-    $body    = New-RoundRect (2*$k) (10*$k) (28*$k) (14*$k) (7*$k)
-    $g.FillPath($bFill, $bumperL)
-    $g.FillPath($bFill, $bumperR)
+    # Silhouette: two rounded grips + a body, all in the fill colour.
+    $g.FillEllipse($bFill, 2*$k, 12*$k, 13*$k, 13*$k)   # left grip
+    $g.FillEllipse($bFill, 17*$k, 12*$k, 13*$k, 13*$k)  # right grip
+    $body = New-RoundRect (4*$k) (7*$k) (24*$k) (13*$k) (6*$k)
     $g.FillPath($bFill, $body)
 
     # Details in white: D-pad (left) and two buttons (right).
-    $g.FillRectangle($bDetail, 8.6*$k, 13*$k, 1.8*$k, 7*$k)   # dpad vertical
-    $g.FillRectangle($bDetail, 6*$k,   15.6*$k, 7*$k, 1.8*$k) # dpad horizontal
-    $g.FillEllipse($bDetail, 20*$k,   13*$k, 3*$k, 3*$k)      # button A
-    $g.FillEllipse($bDetail, 23.3*$k, 16.3*$k, 3*$k, 3*$k)    # button B
+    $g.FillRectangle($bDetail, 8.6*$k, 12*$k, 1.8*$k, 7*$k)   # dpad vertical
+    $g.FillRectangle($bDetail, 6*$k, 14.6*$k, 7*$k, 1.8*$k)   # dpad horizontal
+    $g.FillEllipse($bDetail, 20*$k, 12*$k, 3*$k, 3*$k)        # button A
+    $g.FillEllipse($bDetail, 23.3*$k, 15.3*$k, 3*$k, 3*$k)    # button B
 
-    $bumperL.Dispose(); $bumperR.Dispose(); $body.Dispose()
-    $bFill.Dispose(); $bDetail.Dispose(); $g.Dispose()
+    $body.Dispose(); $bFill.Dispose(); $bDetail.Dispose(); $g.Dispose()
     return $bmp
 }
 
