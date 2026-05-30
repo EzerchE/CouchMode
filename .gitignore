@@ -10,6 +10,7 @@ build/
 Diag-*.ps1
 Test-Detect.ps1
 Auto-XboxMode.ps1
+AutoXboxMode.ps1
 
 # OS / editor cruft
 Thumbs.db

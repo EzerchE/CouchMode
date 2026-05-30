@@ -4,14 +4,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.6-beta] - 2026-05-29
+## [1.4.0-beta] - 2026-05-30
 
 ### Changed
-- **Renamed the project to CouchMode** (formerly AutoXboxMode). Config and log now
-  live in `%AppData%\CouchMode\` and the executable is `CouchMode.exe`. The Windows
-  feature it controls is still called "Xbox mode" / the full screen experience. If
-  you used an earlier version, re-apply your settings (the old
-  `%AppData%\AutoXboxMode\` folder is left untouched).
+- Rebranded to **CouchMode** with a new couch icon (app and tray).
+
+### Added
+- **Pro feature preview.** The Resource Control and Game Tweaks tabs are shown but
+  locked in this free build, previewing what CouchMode Pro will offer: closing apps
+  to free RAM, game tweaks (Do Not Disturb, Game Bar, power plan, visual effects),
+  display switching, and Steam Big Picture / custom launcher modes. Pro is a
+  separate build (coming soon).
 
 ## [1.3.5-beta] - 2026-05-23
 

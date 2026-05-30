@@ -164,6 +164,21 @@ Windows 11 machine.
 - Define custom **actions** to run when a controller disconnects.
 - Per-controller and per-profile rules.
 
+## CouchMode Pro (coming soon)
+
+This free, open-source build automatically switches Xbox mode with your
+controller. **CouchMode Pro** (a separate build, coming soon) adds:
+
+- **Resource control** — close apps to free RAM when you start playing and reopen
+  them afterwards.
+- **Game tweaks** — Do Not Disturb, disable Game Bar recording, High performance
+  power plan, turn off transparency/animations (all reverted on exit).
+- **Display switching** — switch to your TV/second screen on play, restore on exit.
+- **More modes** — open Steam Big Picture or a custom launcher instead of Xbox mode.
+
+In the free build these appear in Settings (Resource Control / Game Tweaks tabs)
+but are locked, as a preview. A Microsoft Store link will be added when Pro is out.
+
 ## Support
 
 CouchMode is free and open source. If it makes your gaming setup nicer, you can
