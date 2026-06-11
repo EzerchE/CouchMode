@@ -158,11 +158,7 @@ Windows 11 machine.
   serial numbers, and it is capped in size. The log lives at
   `%AppData%\CouchMode\app.log`; you can open and review it before sharing.
 
-## Roadmap
 
-- Choose apps/shortcuts to **close** when a controller connects (e.g. quit work apps).
-- Define custom **actions** to run when a controller disconnects.
-- Per-controller and per-profile rules.
 
 ## CouchMode Free & Pro
 
