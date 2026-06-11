@@ -164,20 +164,28 @@ Windows 11 machine.
 - Define custom **actions** to run when a controller disconnects.
 - Per-controller and per-profile rules.
 
-## CouchMode Pro
+## CouchMode Free & Pro
 
-This free, open-source **Lite** version provides the core functionality of automatically switching Xbox mode with your controller. It will always remain free and open source.
+This open-source **Lite** version provides the core functionality of automatically switching Xbox mode with your controller. It will always remain free and open source.
 
-For advanced features, check out **[CouchMode Pro](https://couchmode.app/)**, a separate premium app which adds:
+For a more advanced experience with a dedicated user interface, check out **[CouchMode](https://couchmode.app/)**, which is available in two closed-source editions:
 
-- **Resource control** — close apps to free RAM when you start playing and reopen
-  them afterwards.
-- **Game tweaks** — Do Not Disturb, disable Game Bar recording, High performance
-  power plan, turn off transparency/animations (all reverted on exit).
-- **Display switching** — switch to your TV/second screen on play, restore on exit.
-- **More modes** — open Steam Big Picture or a custom launcher instead of Xbox mode.
+### CouchMode Free
+A UI-enhanced version of the basic couch experience. Always free.
+- **Controller-triggered couch mode**: Xbox full-screen starts when your controller wakes.
+- **Basic session exit**: Returns to desktop when the controller turns off.
+- **Quality of life**: Start silently with Windows, Language & theme matching.
+- **Better UI**: A modern interface designed for ease of use.
 
-In this free build, these features appear in Settings as a preview.
+### CouchMode Pro
+Full session automation. Applies advanced settings when you sit down, and restores them when you are done.
+- **Launch Mode selection**: Pick how a session begins (Xbox full-screen, Steam Big Picture, or a custom launcher).
+- **Audio & Display automation**: Flips from desk speakers to TV/receiver, and handles HDR/Display behavior automatically.
+- **Performance & Resource control**: Pauses background apps and applies power plans / session tweaks for maximum performance.
+- **Notifications silenced**: Focus Assist takes over so alerts don't crash your session.
+- **Session restore**: CouchMode rolls back all the session changes it made when you finish.
+
+[**Download Free or Start 7-day Pro Trial**](https://couchmode.app/)
 
 ## Support
 
