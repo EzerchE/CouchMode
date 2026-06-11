@@ -181,7 +181,7 @@ Full session automation. Applies advanced settings when you sit down, and restor
 - **Notifications silenced**: Focus Assist takes over so alerts don't crash your session.
 - **Session restore**: CouchMode rolls back all the session changes it made when you finish.
 
-[**Download Free or Start 7-day Pro Trial**](https://couchmode.app/)
+[**Start free with a 7-day Pro trial, no credit card required.**](https://couchmode.app/)
 
 ## Support
 
