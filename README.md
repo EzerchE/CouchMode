@@ -54,9 +54,8 @@ No more reaching for the mouse. Let the controller drive the experience.
 
 ## Installation
 
-1. *Deprecated: there are no new releases for this prototype.* (Historical downloads might be found in the [releases](../../releases) tab).
-2. Run `CouchMode.exe`. An icon appears in the system tray.
-3. (Optional) Open **Settings…** from the tray menu and enable **Start automatically with Windows**.
+This repository is an archived legacy prototype. No binaries are distributed from this repository. Do not use this project as the current CouchMode product.
+Official website: [couchmode.app](https://couchmode.app/)
 
 > The app is unsigned, so Windows SmartScreen may warn on first run.
 > Click **More info → Run anyway**.
@@ -110,8 +109,8 @@ Settings and logs are stored in `%AppData%\CouchMode\`.
 
 It helps to know which version of Xbox mode your device has:
 
-- **Default (most PCs):** a controller-friendly full screen interface, similar to
-  Steam Big Picture. Switching is instant, there is no restart prompt, and
+- **Default (most PCs):** a controller-friendly full screen interface.
+  Switching is instant, there is no restart prompt, and
   background processes are not trimmed.
 - **Full handheld-style:** the version that shows a "Restart for better
   performance" prompt and actually limits background services for extra
@@ -180,8 +179,7 @@ liable for any damage, data loss, or other issues arising from its use (see the
 
 ## Acknowledgments
 
-Code signing for Windows release builds is provided free of charge by the
-[SignPath Foundation](https://signpath.org/) open-source program.
+
 
 ## License
 

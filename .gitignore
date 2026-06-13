@@ -20,3 +20,14 @@ desktop.ini
 # Tooling / local config
 .claude/
 memory/
+
+bin/
+obj/
+build/
+dist/
+release/
+*.exe
+*.msi
+*.zip
+*.7z
+*.nupkg

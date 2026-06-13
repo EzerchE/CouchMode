@@ -469,17 +469,8 @@ namespace CouchMode
 
         // What to open when a controller connects:
         //   "xbox"    = Windows Xbox mode / full screen experience (Win+F11)
-        //   "steambp" = Steam Big Picture (steam://open|close/bigpicture)
-        //   "custom"  = a launcher the user picks (CustomLauncherPath)
         public string Mode = "xbox";
-        public string CustomLauncherPath = "";   // .exe/.lnk for "custom" mode
-        // In Steam Big Picture mode, also turn on the Windows full screen experience
-        // for its performance/background trimming. Off = open Steam BP only (faster).
-        public bool SteamWithFse = true;
 
-        // Resource control (apps only, no admin). Two simple lists for when
-        // CouchMode turns ON, and two switches for when it turns OFF. Lists hold
-        // full paths to .exe or .lnk files, separated by '|'.
         public bool ForceClose = false;            // false = graceful only; true = kill survivors
         public string CloseList = "";              // ON: apps to close (free memory)
         public string LaunchOnEnterList = "";      // ON: apps to launch (e.g. a game)
@@ -499,9 +490,7 @@ namespace CouchMode
         // built-in DisplaySwitch.exe). Values: "" (leave as-is), "internal" (PC
         // screen only), "clone" (duplicate), "extend", "external" (second screen only).
         public string DisplayOnXbox = "";
-        public string DisplayOnExit = "";
-
-        // Resource control timing. CloseTimeoutSeconds is the graceful wait before
+        // display behavior.
         // a forced close; LaunchStaggerSeconds is the gap between launching/reopening
         // apps so they do not all start at once and spike the CPU.
         public int CloseTimeoutSeconds = 10;
@@ -1126,9 +1115,7 @@ namespace CouchMode
         // Mode dropdown options: (label, stored value).
         static readonly string[][] ModeOptions = new string[][]
         {
-            new string[] { "Xbox mode (full screen experience)", "xbox" },
-            new string[] { "Steam Big Picture", "steambp" },
-            new string[] { "Custom launcher", "custom" },
+            new string[] { "Xbox mode (full screen experience)", "xbox" }
         };
 
         // Windows Game Mode dropdown options: (label, stored value).
@@ -1205,7 +1192,7 @@ namespace CouchMode
             };
             cmbMode.SelectedIndexChanged += delegate { UpdateModeEnabled(); };
 
-            // Shown only for Steam Big Picture mode (shares the row with the custom path).
+
             cbSteamFse = Check("Also enable Xbox full screen experience (better performance)",
                 current.SteamWithFse, 16, 194);
 
