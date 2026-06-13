@@ -54,48 +54,6 @@ namespace CouchMode
         }
     }
 
-    // ---------------------------------------------------------------------
-    //  Pro gate. Resource control, game tweaks, and display switching are Pro
-    //  features. In the free build they are shown but locked; in the Store build
-    //  this reflects the purchase/trial license. There is a single check point so
-    //  the free build can ship without any Pro logic at all.
-    // ---------------------------------------------------------------------
-    static class Pro
-    {
-        // Free build: false. These tabs/controls are shown but disabled to preview
-        // what Pro offers. (Pro itself is a separate build.)
-        public static bool IsUnlocked = false;
-
-        // Short label shown on locked controls.
-        public const string Badge = "Pro - coming soon";
-
-        // Store listing link, set once the Microsoft Store page exists. Empty for
-        // now, so the upsell just says "coming soon" without opening anything.
-        public const string StoreUrl = "https://couchmode.app/";
-
-        public static void ShowUpsell(IWin32Window owner)
-        {
-            string msg =
-                "CouchMode Pro is coming soon!\r\n\r\n" +
-                "Pro will add: close apps to free RAM, game tweaks (Do Not Disturb, " +
-                "Game Bar, power plan, visual effects), display switching, and Steam " +
-                "Big Picture / custom launcher modes.";
-            if (!string.IsNullOrEmpty(StoreUrl))
-            {
-                msg += "\r\n\r\nOpen the website to learn more?";
-                if (MessageBox.Show(owner, msg, "CouchMode Pro",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
-                {
-                    try { Process.Start(StoreUrl); } catch { }
-                }
-            }
-            else
-            {
-                MessageBox.Show(owner, msg, "CouchMode Pro",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-    }
 
     // ---------------------------------------------------------------------
     //  Native interop: XInput, foreground/monitor queries, key injection
@@ -916,8 +874,6 @@ namespace CouchMode
             ThreadPool.QueueUserWorkItem(delegate
             {
                 // Free build: just toggle the Windows Xbox full screen experience.
-                // (Resource control, game tweaks, Steam Big Picture and custom
-                // launcher modes are Pro features, not included in this build.)
                 try { SetMode(want); }
                 finally
                 {
@@ -1157,14 +1113,11 @@ namespace CouchMode
     class SettingsForm : Form
     {
         readonly CheckBox cbConnect, cbDisconnect, cbStartup, cbDebug;
-        readonly CheckBox cbForce, cbReopen, cbCloseLaunched;
-        readonly CheckBox cbDnd, cbGameDvr, cbPower, cbVisual, cbPowerPlugged;
-        readonly ListBox lstClose, lstLaunchEnter;
-        readonly ComboBox cmbPower, cmbDispXbox, cmbDispExit, cmbMode, cmbGameMode;
+        readonly ComboBox cmbMode;
         readonly TextBox txtCustomLauncher;
         readonly Button btnBrowseLauncher;
         readonly CheckBox cbSteamFse;
-        readonly NumericUpDown numOnDelay, numOffDelay, numCloseTimeout, numLaunchStagger;
+        readonly NumericUpDown numOnDelay, numOffDelay;
         readonly Label lblStat1, lblStat2;
         readonly System.Windows.Forms.Timer statusTimer;
         readonly List<string> schemeGuids = new List<string>();
@@ -1256,19 +1209,8 @@ namespace CouchMode
             cbSteamFse = Check("Also enable Xbox full screen experience (better performance)",
                 current.SteamWithFse, 16, 194);
 
-            // Steam Big Picture / custom launcher are Pro: lock the chooser to Xbox
-            // mode in the free build and offer an unlock link.
-            LinkLabel modeUpsell = null;
-            if (!Pro.IsUnlocked)
-            {
-                cmbMode.SelectedIndex = 0; // Xbox mode
-                cmbMode.Enabled = false;
-                modeUpsell = new LinkLabel();
-                modeUpsell.Text = "Steam Big Picture & custom launcher (Pro - coming soon)";
-                modeUpsell.LinkColor = Color.FromArgb(16, 124, 16);
-                modeUpsell.SetBounds(16, 192, 380, 20);
-                modeUpsell.LinkClicked += delegate { Pro.ShowUpsell(this); };
-            }
+            cmbMode.SelectedIndex = 0; // Xbox mode
+            cmbMode.Enabled = false;
 
             cbStartup = Check("Start automatically with Windows", current.StartWithWindows, 16, 228);
 
@@ -1301,7 +1243,7 @@ namespace CouchMode
             tabGeneral.Controls.Add(txtCustomLauncher);
             tabGeneral.Controls.Add(btnBrowseLauncher);
             tabGeneral.Controls.Add(cbSteamFse);
-            if (modeUpsell != null) tabGeneral.Controls.Add(modeUpsell);
+
             tabGeneral.Controls.Add(cbStartup);
             tabGeneral.Controls.Add(advLink);
             tabGeneral.Controls.Add(grpAdv);
@@ -1314,150 +1256,8 @@ namespace CouchMode
             Load += delegate { RefreshStatus(); statusTimer.Start(); };
             FormClosed += delegate { statusTimer.Stop(); statusTimer.Dispose(); };
 
-            // ---- Resource control tab ----
-            // Two simple sections: what happens when CouchMode turns ON (close /
-            // launch lists) and when it turns OFF (reverse those, plus options).
-            TabPage tabRes = new TabPage("Resource control");
-
-            Label onHdr = Lbl("When CouchMode turns ON (controller connected)", 12, 10);
-            onHdr.Font = new Font(onHdr.Font, FontStyle.Bold);
-
-            lstClose = new ListBox();
-            lstClose.SetBounds(12, 52, 286, 70);
-            lstClose.HorizontalScrollbar = true;
-            Button addClose = Btn("File...", 306, 52);
-            addClose.Click += delegate { AddTo(lstClose); };
-            Button addCloseRun = Btn("Running...", 306, 82);
-            addCloseRun.Click += delegate { AddRunningTo(lstClose); };
-            Button remClose = Btn("Remove", 306, 112);
-            remClose.Click += delegate { RemoveFrom(lstClose); };
-
-            lstLaunchEnter = new ListBox();
-            lstLaunchEnter.SetBounds(12, 168, 286, 70);
-            lstLaunchEnter.HorizontalScrollbar = true;
-            Button addEnter = Btn("File...", 306, 168);
-            addEnter.Click += delegate { AddTo(lstLaunchEnter); };
-            Button addEnterRun = Btn("Running...", 306, 198);
-            addEnterRun.Click += delegate { AddRunningTo(lstLaunchEnter); };
-            Button remEnter = Btn("Remove", 306, 228);
-            remEnter.Click += delegate { RemoveFrom(lstLaunchEnter); };
-
-            Label staggerLbl = Lbl("Stagger launches (seconds):", 12, 246);
-            numLaunchStagger = new NumericUpDown();
-            numLaunchStagger.SetBounds(206, 244, 56, 22);
-            numLaunchStagger.Minimum = 0; numLaunchStagger.Maximum = 10;
-            numLaunchStagger.Value = Clamp(current.LaunchStaggerSeconds, 0, 10);
-
-            Label offHdr = Lbl("When CouchMode turns OFF (controllers disconnected)", 12, 278);
-            offHdr.Font = new Font(offHdr.Font, FontStyle.Bold);
-            cbReopen = Check("Reopen the apps that were closed", current.ReopenClosedOnExit, 16, 304);
-            cbCloseLaunched = Check("Close the apps that were launched", current.CloseLaunchedOnExit, 16, 328);
-
-            cbForce = Check("Force close apps after timeout", current.ForceClose, 16, 354);
-            cbForce.CheckedChanged += delegate
-            {
-                if (cbForce.Checked)
-                {
-                    DialogResult r = MessageBox.Show(this,
-                        "Force close ends apps that don't close on their own. Any unsaved work in them can be lost.\r\n\r\nEnable force close anyway?",
-                        "Force close", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (r != DialogResult.Yes) cbForce.Checked = false;
-                }
-                numCloseTimeout.Enabled = cbForce.Checked;
-            };
-            Label toLbl = Lbl("Force close timeout (seconds):", 36, 382);
-            numCloseTimeout = new NumericUpDown();
-            numCloseTimeout.SetBounds(266, 380, 56, 22);
-            numCloseTimeout.Minimum = 1; numCloseTimeout.Maximum = 60;
-            numCloseTimeout.Value = Clamp(current.CloseTimeoutSeconds, 1, 60);
-            numCloseTimeout.Enabled = cbForce.Checked;
-            Label toNote = Lbl("Ends an app only if it ignores the close request.", 36, 404);
-            toNote.ForeColor = SystemColors.GrayText;
-
-            tabRes.Controls.Add(onHdr);
-            tabRes.Controls.Add(Lbl("Apps to close (free memory):", 12, 32));
-            tabRes.Controls.Add(lstClose);
-            tabRes.Controls.Add(addClose);
-            tabRes.Controls.Add(addCloseRun);
-            tabRes.Controls.Add(remClose);
-            tabRes.Controls.Add(Lbl("Apps to launch (e.g. a game):", 12, 148));
-            tabRes.Controls.Add(lstLaunchEnter);
-            tabRes.Controls.Add(addEnter);
-            tabRes.Controls.Add(addEnterRun);
-            tabRes.Controls.Add(remEnter);
-            tabRes.Controls.Add(staggerLbl);
-            tabRes.Controls.Add(numLaunchStagger);
-            tabRes.Controls.Add(offHdr);
-            tabRes.Controls.Add(cbReopen);
-            tabRes.Controls.Add(cbCloseLaunched);
-            tabRes.Controls.Add(cbForce);
-            tabRes.Controls.Add(toLbl);
-            tabRes.Controls.Add(numCloseTimeout);
-            tabRes.Controls.Add(toNote);
-
-            // ---- Session tweaks tab ----
-            // Temporary, reversible adjustments while CouchMode is on.
-            TabPage tabTweaks = new TabPage("Session tweaks");
-            cbDnd = Check("Silence notifications (Do Not Disturb)", current.TweakDnd, 12, 12);
-            cbGameDvr = Check("Disable Game Bar background recording", current.TweakGameDvr, 12, 38);
-            cbVisual = Check("Turn off transparency and animations", current.TweakVisualEffects, 12, 64);
-
-            Label gmLbl = Lbl("Windows Game Mode:", 12, 92);
-            cmbGameMode = new ComboBox();
-            cmbGameMode.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbGameMode.SetBounds(150, 90, 160, 24);
-            int gmSel = 0;
-            for (int i = 0; i < GameModeOptions.Length; i++)
-            {
-                cmbGameMode.Items.Add(GameModeOptions[i][0]);
-                if (GameModeOptions[i][1] == (current.GameMode ?? "")) gmSel = i;
-            }
-            cmbGameMode.SelectedIndex = gmSel;
-
-            cbPower = Check("Switch power plan to:", current.TweakPowerPlan, 12, 124);
-            cbPower.SetBounds(12, 124, 150, 22);
-            cmbPower = new ComboBox();
-            cmbPower.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbPower.SetBounds(166, 122, 230, 24);
-            // Power plan list is a Pro feature; the tab is locked in the free build,
-            // so the combo is left empty here.
-            cbPowerPlugged = Check("Only when plugged in (skip on battery)", current.PowerPlanPluggedInOnly, 30, 150);
-
-            Label dlbl1 = Lbl("Display when CouchMode turns on:", 12, 180);
-            cmbDispXbox = DisplayCombo(current.DisplayOnXbox, 12, 200);
-            Label dlbl2 = Lbl("Display when it turns off:", 12, 234);
-            cmbDispExit = DisplayCombo(current.DisplayOnExit, 12, 254);
-
-            Label tnote = Lbl("These changes are restored when CouchMode turns off.", 12, 290);
-            tnote.ForeColor = SystemColors.GrayText;
-
-            tabTweaks.Controls.Add(cbDnd);
-            tabTweaks.Controls.Add(cbGameDvr);
-            tabTweaks.Controls.Add(cbVisual);
-            tabTweaks.Controls.Add(gmLbl);
-            tabTweaks.Controls.Add(cmbGameMode);
-            tabTweaks.Controls.Add(cbPower);
-            tabTweaks.Controls.Add(cmbPower);
-            tabTweaks.Controls.Add(cbPowerPlugged);
-            tabTweaks.Controls.Add(dlbl1);
-            tabTweaks.Controls.Add(cmbDispXbox);
-            tabTweaks.Controls.Add(dlbl2);
-            tabTweaks.Controls.Add(cmbDispExit);
-            tabTweaks.Controls.Add(tnote);
-
             tabs.TabPages.Add(tabGeneral);
-            tabs.TabPages.Add(tabRes);
-            tabs.TabPages.Add(tabTweaks);
-
-            // Pro gate: in the free build these tabs are visible but locked.
-            if (!Pro.IsUnlocked)
-            {
-                LockTab(tabRes);
-                LockTab(tabTweaks);
-            }
-
-            Populate(lstClose, current.CloseList);
-            Populate(lstLaunchEnter, current.LaunchOnEnterList);
+            
 
             // Right-aligned with a margin from the window edge (client width 440).
             Button ok = Btn("Save", 244, 486);
@@ -1491,26 +1291,6 @@ namespace CouchMode
             Button b = new Button(); b.Text = text; b.SetBounds(x, y, 88, 28);
             return b;
         }
-        static ComboBox DisplayCombo(string value, int x, int y)
-        {
-            ComboBox c = new ComboBox();
-            c.DropDownStyle = ComboBoxStyle.DropDownList;
-            c.SetBounds(x, y, 230, 24);
-            int sel = 0;
-            for (int i = 0; i < DispOptions.Length; i++)
-            {
-                c.Items.Add(DispOptions[i][0]);
-                if (DispOptions[i][1] == (value ?? "")) sel = i;
-            }
-            c.SelectedIndex = sel;
-            return c;
-        }
-        static string DisplayValue(ComboBox c)
-        {
-            int i = c.SelectedIndex;
-            return (i >= 0 && i < DispOptions.Length) ? DispOptions[i][1] : "";
-        }
-
         static decimal Clamp(int v, int min, int max)
         {
             if (v < min) v = min;
@@ -1534,105 +1314,13 @@ namespace CouchMode
             lblStat2.Text = "Last action: " + AppStatus.LastAction;
         }
 
-        // Disables every control on a Pro tab and adds a clickable unlock banner.
-        void LockTab(TabPage page)
-        {
-            List<Control> existing = new List<Control>();
-            foreach (Control c in page.Controls) existing.Add(c);
-            foreach (Control c in existing) { c.Enabled = false; c.Top += 28; }
-
-            LinkLabel banner = new LinkLabel();
-            banner.Text = "Pro feature - coming soon (click for details)";
-            banner.SetBounds(10, 6, 420, 20);
-            banner.LinkColor = Color.FromArgb(16, 124, 16);
-            banner.LinkClicked += delegate { Pro.ShowUpsell(this); };
-            page.Controls.Add(banner);
-            banner.BringToFront();
-        }
-
-        void UpdateModeEnabled()
+                void UpdateModeEnabled()
         {
             bool custom = cmbMode.SelectedIndex == 2; // "custom"
             bool steam = cmbMode.SelectedIndex == 1;  // "steambp"
             txtCustomLauncher.Visible = custom;
             btnBrowseLauncher.Visible = custom;
             cbSteamFse.Visible = steam;
-        }
-
-        void AddTo(ListBox lb)
-        {
-            using (OpenFileDialog d = new OpenFileDialog())
-            {
-                d.Title = "Choose a program or shortcut";
-                d.Filter = "Programs and shortcuts (*.exe;*.lnk)|*.exe;*.lnk|All files (*.*)|*.*";
-                d.Multiselect = true;
-                if (d.ShowDialog(this) == DialogResult.OK)
-                    AddPaths(lb, d.FileNames);
-            }
-        }
-
-        void AddRunningTo(ListBox lb)
-        {
-            using (RunningAppsForm f = new RunningAppsForm())
-            {
-                if (f.ShowDialog(this) == DialogResult.OK)
-                    AddPaths(lb, f.SelectedPaths.ToArray());
-            }
-        }
-
-        // Adds paths to a list, skipping ones already there or already in the OTHER
-        // list (an app cannot be both closed and launched). Warns once if any were
-        // skipped for being in the other list.
-        void AddPaths(ListBox lb, string[] paths)
-        {
-            ListBox other = (lb == lstClose) ? lstLaunchEnter : lstClose;
-            bool clash = false;
-            foreach (string p in paths)
-            {
-                if (Contains(other, p)) { clash = true; continue; }
-                if (!Contains(lb, p)) lb.Items.Add(new AppItem(p));
-            }
-            if (clash)
-                MessageBox.Show(this,
-                    "Some apps were skipped because they are already in the other list. "
-                    + "An app cannot be both closed and launched.",
-                    "Already listed", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        static void RemoveFrom(ListBox lb)
-        {
-            if (lb.SelectedItem != null) lb.Items.Remove(lb.SelectedItem);
-        }
-
-        static bool Contains(ListBox lb, string path)
-        {
-            foreach (object o in lb.Items)
-            {
-                AppItem a = o as AppItem;
-                if (a != null && string.Equals(a.Path, path, StringComparison.OrdinalIgnoreCase)) return true;
-            }
-            return false;
-        }
-
-        static void Populate(ListBox lb, string list)
-        {
-            if (string.IsNullOrEmpty(list)) return;
-            foreach (string raw in list.Split('|'))
-            {
-                string p = raw.Trim();
-                if (p.Length > 0) lb.Items.Add(new AppItem(p));
-            }
-        }
-
-        static string Join(ListBox lb)
-        {
-            List<string> paths = new List<string>();
-            foreach (object o in lb.Items)
-            {
-                AppItem a = o as AppItem;
-                if (a != null) paths.Add(a.Path);
-            }
-            return string.Join("|", paths.ToArray());
         }
 
         void OnSave(object sender, EventArgs e)
@@ -1648,278 +1336,11 @@ namespace CouchMode
             s.Mode = (mi >= 0 && mi < ModeOptions.Length) ? ModeOptions[mi][1] : "xbox";
             s.CustomLauncherPath = txtCustomLauncher.Text.Trim();
             s.SteamWithFse = cbSteamFse.Checked;
-            s.ForceClose = cbForce.Checked;
-            s.CloseTimeoutSeconds = (int)numCloseTimeout.Value;
-            s.LaunchStaggerSeconds = (int)numLaunchStagger.Value;
-            s.CloseList = Join(lstClose);
-            s.LaunchOnEnterList = Join(lstLaunchEnter);
-            s.ReopenClosedOnExit = cbReopen.Checked;
-            s.CloseLaunchedOnExit = cbCloseLaunched.Checked;
-            s.TweakDnd = cbDnd.Checked;
-            s.TweakGameDvr = cbGameDvr.Checked;
-            s.TweakPowerPlan = cbPower.Checked;
-            s.PowerPlanPluggedInOnly = cbPowerPlugged.Checked;
-            int pi = cmbPower.SelectedIndex;
-            s.PowerSchemeGuid = (pi >= 0 && pi < schemeGuids.Count) ? schemeGuids[pi] : "";
-            int gm = cmbGameMode.SelectedIndex;
-            s.GameMode = (gm >= 0 && gm < GameModeOptions.Length) ? GameModeOptions[gm][1] : "";
-            s.TweakVisualEffects = cbVisual.Checked;
-            s.DisplayOnXbox = DisplayValue(cmbDispXbox);
-            s.DisplayOnExit = DisplayValue(cmbDispExit);
+            
             Result = s;
         }
     }
 
-    // ---------------------------------------------------------------------
-    //  Picker that lists currently running windowed apps (by RAM) so the user
-    //  can add them without hunting for the executable on disk.
-    // ---------------------------------------------------------------------
-    class RunningAppsForm : Form
-    {
-        readonly ListView list;
-        public readonly List<string> SelectedPaths = new List<string>();
-
-        class Row
-        {
-            public string Name;
-            public string Path;
-            public bool HasWindow;
-            public long RamBytes;
-            public double CpuPct;
-            public double DiskKBs;
-            public readonly List<Process> Procs = new List<Process>();
-            // Snapshot accumulators (first sample).
-            public double Cpu0Ms;
-            public ulong Io0Bytes;
-
-            public long RamMB { get { return RamBytes / (1024 * 1024); } }
-            public double Score { get { return CpuPct * 30.0 + DiskKBs / 50.0 + RamMB / 20.0; } }
-
-            public override string ToString()
-            {
-                return string.Format("{0}    {1} MB · {2}% CPU · {3} MB/s",
-                    Name, RamMB, CpuPct.ToString("0"), (DiskKBs / 1024.0).ToString("0.0"));
-            }
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct IO_COUNTERS
-        {
-            public ulong ReadOps, WriteOps, OtherOps, ReadBytes, WriteBytes, OtherBytes;
-        }
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool GetProcessIoCounters(IntPtr h, out IO_COUNTERS c);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern IntPtr OpenProcess(int access, bool inherit, int pid);
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        static extern bool QueryFullProcessImageName(IntPtr h, int flags, StringBuilder buf, ref int size);
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool CloseHandle(IntPtr h);
-        const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
-
-        // More robust than Process.MainModule.FileName: also resolves the path for
-        // UWP/Store, packaged, and cross-bitness processes that MainModule cannot read.
-        static string GetProcessPath(Process p)
-        {
-            IntPtr h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, p.Id);
-            if (h != IntPtr.Zero)
-            {
-                try
-                {
-                    int cap = 1024;
-                    StringBuilder sb = new StringBuilder(cap);
-                    if (QueryFullProcessImageName(h, 0, sb, ref cap)) return sb.ToString();
-                }
-                finally { CloseHandle(h); }
-            }
-            try { return p.MainModule.FileName; } catch { return null; }
-        }
-
-        public RunningAppsForm()
-        {
-            Text = "Add a running app";
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            StartPosition = FormStartPosition.CenterParent;
-            MaximizeBox = false;
-            MinimizeBox = false;
-            ClientSize = new Size(470, 440);
-
-            Label hint = new Label();
-            hint.Text = "Apps using the most CPU, disk and RAM right now. Tick the ones to add.";
-            hint.SetBounds(12, 8, 446, 18);
-
-            list = new ListView();
-            list.SetBounds(12, 34, 446, 354);
-            list.View = View.Details;
-            list.CheckBoxes = true;
-            list.FullRowSelect = true;
-            list.GridLines = true;
-            list.HeaderStyle = ColumnHeaderStyle.Nonclickable;
-            list.Columns.Add("App", 158);
-            list.Columns.Add("Process", 95);
-            ColumnHeader cRam = list.Columns.Add("RAM", 68); cRam.TextAlign = HorizontalAlignment.Right;
-            ColumnHeader cCpu = list.Columns.Add("CPU", 50); cCpu.TextAlign = HorizontalAlignment.Right;
-            ColumnHeader cDisk = list.Columns.Add("Disk", 70); cDisk.TextAlign = HorizontalAlignment.Right;
-
-            Button ok = new Button();
-            ok.Text = "Add selected"; ok.DialogResult = DialogResult.OK;
-            ok.SetBounds(278, 398, 96, 30); ok.Click += OnOk;
-            Button cancel = new Button();
-            cancel.Text = "Cancel"; cancel.DialogResult = DialogResult.Cancel;
-            cancel.SetBounds(382, 398, 76, 30);
-
-            Controls.Add(hint);
-            Controls.Add(list);
-            Controls.Add(ok);
-            Controls.Add(cancel);
-            AcceptButton = ok;
-            CancelButton = cancel;
-
-            Populate();
-        }
-
-        // Windows shell, OS, security, and Xbox-mode processes that should never be
-        // suggested for closing (closing them is pointless or breaks Xbox mode).
-        static readonly HashSet<string> Blocked = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "CouchMode",
-            // Xbox mode / Game Bar components
-            "XboxPcApp", "XboxPcAppFT", "XboxPcTray", "GameBar", "GameBarFTServer",
-            "XboxGameBarWidgets", "GamingServices", "GamingServicesNet",
-            // Windows shell / core
-            "explorer", "dwm", "csrss", "wininit", "winlogon", "services", "lsass",
-            "smss", "fontdrvhost", "RuntimeBroker", "sihost", "taskhostw", "ctfmon",
-            "conhost", "dllhost", "spoolsv", "SearchHost", "SearchIndexer",
-            "StartMenuExperienceHost", "ShellExperienceHost", "TextInputHost",
-            "ApplicationFrameHost", "LockApp", "SystemSettings", "audiodg", "WmiPrvSE",
-            "svchost", "WUDFHost", "TabTip", "PhoneExperienceHost", "WidgetService",
-            "Widgets", "WindowsPackageManagerServer", "GameInputRedistService",
-            "smartscreen", "backgroundTaskHost", "UserOOBEBroker",
-            // Security
-            "MsMpEng", "NisSrv", "SecurityHealthService", "SecurityHealthSystray",
-            // Shared runtimes / helper subprocesses: pointless to close on their own
-            // (they belong to a host app and just respawn or break it).
-            "msedgewebview2", "QtWebEngineProcess", "crashpad_handler",
-            "CefSharp.BrowserSubprocess", "vcpkgsrv", "msvsmon",
-        };
-
-        void Populate()
-        {
-            string winDir = "";
-            try { winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows); } catch { }
-            int cores = Environment.ProcessorCount; if (cores < 1) cores = 1;
-
-            // Pass 1: group processes by name; record RAM, window, path, and the
-            // first CPU-time / disk-bytes sample. Keep the Process objects so we
-            // can take a second sample after a short interval.
-            Dictionary<string, Row> groups = new Dictionary<string, Row>(StringComparer.OrdinalIgnoreCase);
-            Process[] all;
-            try { all = Process.GetProcesses(); } catch { return; }
-            foreach (Process p in all)
-            {
-                try
-                {
-                    string name = p.ProcessName;
-                    if (Blocked.Contains(name)) { p.Dispose(); continue; }
-                    Row r;
-                    if (!groups.TryGetValue(name, out r)) { r = new Row(); r.Name = name; groups[name] = r; }
-                    r.Procs.Add(p);
-                    try { r.RamBytes += p.WorkingSet64; } catch { }
-                    if (p.MainWindowHandle != IntPtr.Zero) r.HasWindow = true;
-                    if (r.Path == null) { string pth = GetProcessPath(p); if (pth != null) r.Path = pth; }
-                    try { p.Refresh(); r.Cpu0Ms += p.TotalProcessorTime.TotalMilliseconds; } catch { }
-                    try { IO_COUNTERS c; if (GetProcessIoCounters(p.Handle, out c)) r.Io0Bytes += c.ReadBytes + c.WriteBytes; } catch { }
-                }
-                catch { try { p.Dispose(); } catch { } }
-            }
-
-            // Let a moment pass so CPU and disk activity can be measured.
-            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-            Thread.Sleep(750);
-            sw.Stop();
-            double intervalMs = sw.Elapsed.TotalMilliseconds; if (intervalMs < 1) intervalMs = 1;
-
-            // Pass 2: second sample, compute CPU% and disk rate per group.
-            foreach (Row r in groups.Values)
-            {
-                double cpu1 = 0; ulong io1 = 0;
-                foreach (Process p in r.Procs)
-                {
-                    try { p.Refresh(); cpu1 += p.TotalProcessorTime.TotalMilliseconds; } catch { }
-                    try { IO_COUNTERS c; if (GetProcessIoCounters(p.Handle, out c)) io1 += c.ReadBytes + c.WriteBytes; } catch { }
-                }
-                double cpu = (cpu1 - r.Cpu0Ms) / (intervalMs * cores) * 100.0;
-                r.CpuPct = cpu > 0 ? cpu : 0;
-                double bytes = io1 >= r.Io0Bytes ? (io1 - r.Io0Bytes) : 0;
-                r.DiskKBs = (bytes / 1024.0) / (intervalMs / 1000.0);
-            }
-
-            // Include an app if it has a window, OR is a user app (outside Windows)
-            // with notable RAM, OR is actively using CPU or disk right now (the real
-            // stutter causes). Then rank by overall gameplay impact.
-            List<Row> rows = new List<Row>();
-            foreach (Row r in groups.Values)
-            {
-                if (r.Path == null) { DisposeProcs(r); continue; }
-                bool underWindows = winDir.Length > 0 && r.Path.StartsWith(winDir, StringComparison.OrdinalIgnoreCase);
-                bool include = r.HasWindow
-                    || (!underWindows && r.RamMB >= 30)
-                    || r.CpuPct >= 1.0
-                    || r.DiskKBs >= 50;
-                if (include) rows.Add(r); else DisposeProcs(r);
-            }
-
-            rows.Sort(delegate(Row a, Row b) { return b.Score.CompareTo(a.Score); });
-            foreach (Row r in rows)
-            {
-                string friendly = GetFriendly(r.Path);
-                ListViewItem it = new ListViewItem(string.IsNullOrEmpty(friendly) ? r.Name : friendly);
-                it.SubItems.Add(r.Name);
-                it.SubItems.Add(r.RamMB + " MB");
-                it.SubItems.Add(r.CpuPct.ToString("0") + "%");
-                it.SubItems.Add((r.DiskKBs / 1024.0).ToString("0.0") + " MB/s");
-                it.ToolTipText = r.Path;
-                it.Tag = r.Path;
-                list.Items.Add(it);
-                DisposeProcs(r);
-            }
-            list.ShowItemToolTips = true;
-        }
-
-        // Friendly product name from the file's version info (e.g. "Google Chrome").
-        static string GetFriendly(string path)
-        {
-            try
-            {
-                System.Diagnostics.FileVersionInfo vi = System.Diagnostics.FileVersionInfo.GetVersionInfo(path);
-                string d = vi.FileDescription;
-                if (!string.IsNullOrEmpty(d) && d.Trim().Length > 0) return d.Trim();
-                string pn = vi.ProductName;
-                if (!string.IsNullOrEmpty(pn) && pn.Trim().Length > 0) return pn.Trim();
-            }
-            catch { }
-            return null;
-        }
-
-        static void DisposeProcs(Row r)
-        {
-            foreach (Process p in r.Procs) { try { p.Dispose(); } catch { } }
-        }
-
-        void OnOk(object sender, EventArgs e)
-        {
-            foreach (ListViewItem it in list.CheckedItems)
-            {
-                string p = it.Tag as string;
-                if (p != null) SelectedPaths.Add(p);
-            }
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    //  About dialog
-    // ---------------------------------------------------------------------
     class AboutForm : Form
     {
         public AboutForm()

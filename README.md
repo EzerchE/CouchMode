@@ -1,4 +1,11 @@
-# CouchMode Lite
+# CouchMode Lite — archived legacy prototype
+
+**No longer maintained.**
+**Not the current CouchMode product.**
+Official website: [couchmode.app](https://couchmode.app)
+Current product development is private/commercial and separate.
+
+---
 
 **Automatically enable Windows 11 Xbox mode (the full screen experience) when an Xbox controller connects, and turn it off when the controller disconnects.**
 
@@ -10,11 +17,6 @@ gaming interface. CouchMode Lite makes it automatic: power on your Xbox controll
 your PC enters Xbox mode; turn the controller off and it returns to the desktop.
 
 No more reaching for the mouse. Let the controller drive the experience.
-
-Windows 11 can enter the Xbox full screen experience at startup (mainly on handhelds)
-or with the `Win+F11` shortcut on supported systems. CouchMode focuses on the one
-piece of convenience that is missing: switching automatically based on your
-controller's connection state, and returning you to the desktop when it disconnects.
 
 ---
 
@@ -52,8 +54,8 @@ controller's connection state, and returning you to the desktop when it disconne
 
 ## Installation
 
-1. Download `CouchMode.exe` from the [latest release](../../releases/latest).
-2. Run it. An icon appears in the system tray.
+1. *Deprecated: there are no new releases for this prototype.* (Historical downloads might be found in the [releases](../../releases) tab).
+2. Run `CouchMode.exe`. An icon appears in the system tray.
 3. (Optional) Open **Settings…** from the tray menu and enable **Start automatically with Windows**.
 
 > The app is unsigned, so Windows SmartScreen may warn on first run.
@@ -160,28 +162,6 @@ Windows 11 machine.
 
 
 
-## CouchMode Free & Pro
-
-This open-source **Lite** version provides the core functionality of automatically switching Xbox mode with your controller. It will always remain free and open source.
-
-For a more advanced experience with a dedicated user interface, check out **[CouchMode](https://couchmode.app/)**, which is available in two closed-source editions:
-
-### CouchMode Free
-A UI-enhanced version of the basic couch experience. Always free.
-- **Controller-triggered couch mode**: Xbox full-screen starts when your controller wakes.
-- **Basic session exit**: Returns to desktop when the controller turns off.
-- **Quality of life**: Start silently with Windows, Language & theme matching.
-- **Better UI**: A modern interface designed for ease of use.
-
-### CouchMode Pro
-Full session automation. Applies advanced settings when you sit down, and restores them when you are done.
-- **Launch Mode selection**: Pick how a session begins (Xbox full-screen, Steam Big Picture, or a custom launcher).
-- **Audio & Display automation**: Flips from desk speakers to TV/receiver, and handles HDR/Display behavior automatically.
-- **Performance & Resource control**: Pauses background apps and applies power plans / session tweaks for maximum performance.
-- **Notifications silenced**: Focus Assist takes over so alerts don't crash your session.
-- **Session restore**: CouchMode rolls back all the session changes it made when you finish.
-
-[**Start free with a 7-day Pro trial, no credit card required.**](https://couchmode.app/)
 
 ## Support
 
